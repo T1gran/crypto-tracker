@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "nodemon --exec tsx src/server.ts",
+    "debug": "node --import tsx --inspect-brk src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,18 +13,20 @@
   "description": "",
   "dependencies": {
     "axios": "^1.20.0",
+    "better-sqlite3": "^12.11.1",
     "dotenv": "^18.0.5",
-    "express": "^5.2.1",
-    "sqlite3": "^6.0.1"
+    "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.4",
-    "@types/sqlite3": "^3.1.11",
     "@types/supertest": "^7.2.1",
     "jest": "^30.5.2",
+    "nodemon": "^3.1.14",
     "supertest": "^7.3.1",
+    "tsx": "^4.23.13",
     "ts-node-dev": "^2.0.0",
     "typescript": "^7.0.2"
   }
