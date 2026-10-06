@@ -18,7 +18,7 @@ export class CoinRepository {
   }
 
   static findAll() {
-    const stmt = db.prepare<[], CoinRow[]>(
+    const stmt = db.prepare<[], CoinRow>(
       "SELECT * FROM coins WHERE is_active = 1",
     );
     return stmt.all();
