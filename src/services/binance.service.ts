@@ -37,7 +37,8 @@ export class BinanceService {
   }
 
   async validateSymbol(symbol: string): Promise<boolean> {
-    const price = await this.getPrice(symbol);
+    const formattedSymbol = symbol.toUpperCase().trim();
+    const price = await this.getPrice(formattedSymbol);
     return price !== null;
   }
 }
