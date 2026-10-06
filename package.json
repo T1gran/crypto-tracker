@@ -5,7 +5,8 @@
   "scripts": {
     "start": "nodemon --exec tsx src/server.ts",
     "debug": "node --import tsx --inspect-brk src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed": "tsx src/db/seed.ts"
   },
   "keywords": [],
   "author": "",

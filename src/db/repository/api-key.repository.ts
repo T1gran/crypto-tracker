@@ -2,6 +2,13 @@ import { ApiKeyRow } from "../../types/db.types";
 import { db } from "../database";
 
 export class ApiKeyRepository {
+  static create(key: string, name: string) {
+    const stmt = db.prepare(
+      "INSERT INTO api_keys (key_value, client_name) VALUES (?, ?)",
+    );
+    stmt.run(key, name);
+  }
+
   static findByKeyValue(keyValue: string): ApiKeyRow | null {
     try {
       const stmt = db.prepare<[string], ApiKeyRow>(
