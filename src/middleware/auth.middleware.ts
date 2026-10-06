@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ApiKeyRepository } from "../db/repository/api-key.repository";
+import { AppError } from "../errors/app-error";
 export const authMiddleware = (
   req: Request,
   res: Response,
@@ -8,25 +9,22 @@ export const authMiddleware = (
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({
-      message: "Unauthorized: Authorization header missing or invalid format",
-    });
+    throw new AppError(
+      "Unauthorized: Authorization header missing or invalid format",
+      401,
+    );
   }
 
   const authToken = authHeader.split(" ")[1]?.trim();
 
   if (!authToken) {
-    return res.status(401).json({
-      message: "Unauthorized: Token is missing",
-    });
+    throw new AppError("Unauthorized: Token is missing", 401);
   }
 
   const apiKey = ApiKeyRepository.findByKeyValue(authToken);
 
   if (!apiKey) {
-    return res.status(401).json({
-      message: "Unauthorized: Invalid API key",
-    });
+    throw new AppError("Unauthorized: Invalid API key", 401);
   }
 
   next();

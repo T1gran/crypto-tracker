@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { CoinRepository } from "../db/repository/coin.repository";
 import { binanceService } from "../services/binance.service";
 import { PriceRepository } from "../db/repository/price.repository";
+import { AppError } from "../errors/app-error";
 
 export const createCoin = async (
   req: Request,
@@ -13,9 +14,7 @@ export const createCoin = async (
 
     const isTickerOnBinance = await binanceService.validateSymbol(symbol);
     if (!isTickerOnBinance) {
-      return res.status(404).json({
-        message: `Ticker '${symbol}' not found on Binance`,
-      });
+      throw new AppError(`Coin '${symbol}' not found`, 404);
     }
 
     const existingCoin = CoinRepository.findBySymbol(symbol);
@@ -56,7 +55,7 @@ export const getCoinBySymbol = (
 
     const coin = CoinRepository.findBySymbol(symbol);
     if (!coin) {
-      return res.status(404).json({ message: "Coin not found" });
+      throw new AppError(`Coin '${symbol}' not found`, 404);
     }
 
     return res.status(200).json({
@@ -77,7 +76,7 @@ export const deleteCoinBySymbol = (
     const isDeleted = CoinRepository.deleteBySymbol(symbol);
 
     if (!isDeleted) {
-      return res.status(404).json({ message: "Coin not found" });
+      throw new AppError(`Coin '${symbol}' not found`, 404);
     }
 
     return res.status(200).json({
@@ -98,7 +97,7 @@ export const getCoinHistory = (
 
     const coin = CoinRepository.findBySymbol(symbol);
     if (!coin) {
-      return res.status(404).json({ message: "Coin not found" });
+      throw new AppError(`Coin '${symbol}' not found`, 404);
     }
 
     const limit = req.query.limit ? Number(req.query.limit) : 100;
