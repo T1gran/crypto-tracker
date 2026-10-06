@@ -19,3 +19,10 @@ export interface PriceHistoryRow {
   price_usd: number;
   fetched_at: string;
 }
+
+export interface PriceHistoryOptions {
+  limit?: number;
+  offset?: number;
+  from?: string;
+  to?: string;
+}
