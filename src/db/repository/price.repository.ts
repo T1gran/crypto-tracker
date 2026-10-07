@@ -43,7 +43,7 @@ export class PriceRepository {
     if (items.length === 0) return;
 
     const stmt = db.prepare(
-      "INSERT INTO price_history (coin_symbol, price) VALUES (?, ?)",
+      "INSERT INTO price_history (coin_symbol, price_usd) VALUES (?, ?)",
     );
 
     const insertMany = db.transaction((data: typeof items) => {
