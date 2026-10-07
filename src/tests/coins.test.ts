@@ -40,7 +40,9 @@ describe("Coins API (/coins)", () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    db.exec("DELETE FROM price_history; DELETE FROM coins; DELETE FROM api_keys;");
+    db.exec(
+      "DELETE FROM price_history; DELETE FROM coins; DELETE FROM api_keys;",
+    );
     ApiKeyRepository.create(validToken, "Test Coins Client");
   });
 
@@ -83,11 +85,11 @@ describe("Coins API (/coins)", () => {
       const response = await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "BTCUSDT", name: "Bitcoin" });
+        .send({ symbol: "BTC", name: "Bitcoin" });
 
       expect(response.status).toBe(201);
       expect(response.body.data).toMatchObject({
-        symbol: "BTCUSDT",
+        symbol: "BTC",
         name: "Bitcoin",
       });
     });
@@ -98,12 +100,12 @@ describe("Coins API (/coins)", () => {
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "BTCUSDT", name: "Bitcoin" });
+        .send({ symbol: "BTC", name: "Bitcoin" });
 
       const response = await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "BTCUSDT", name: "Bitcoin" });
+        .send({ symbol: "BTC", name: "Bitcoin" });
 
       expect(response.status).toBe(409);
       expect(response.body.message).toContain("already being tracked");
@@ -117,7 +119,7 @@ describe("Coins API (/coins)", () => {
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "ETHUSDT", name: "Ethereum" });
+        .send({ symbol: "ETH", name: "Ethereum" });
 
       const response = await request
         .get("/coins")
@@ -149,15 +151,15 @@ describe("Coins API (/coins)", () => {
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "SOLUSDT", name: "Solana" });
+        .send({ symbol: "SOL", name: "Solana" });
 
       const response = await request
-        .get("/coins/solusdt")
+        .get("/coins/sol")
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.data).toMatchObject({
-        symbol: "SOLUSDT",
+        symbol: "SOL",
         name: "Solana",
       });
     });
@@ -186,17 +188,15 @@ describe("Coins API (/coins)", () => {
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "ADAUSDT", name: "Cardano" });
+        .send({ symbol: "ADA", name: "Cardano" });
 
       const response = await request
-        .delete("/coins/adausdt")
+        .delete("/coins/ada")
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toContain("ADAUSDT");
-      expect(
-        CoinRepository.findBySymbol("ADAUSDT"),
-      ).toBeNull();
+      expect(response.body.message).toContain("ADA");
+      expect(CoinRepository.findBySymbol("ADA")).toBeNull();
     });
 
     it("should return 404 when deleting an untracked coin", async () => {
@@ -208,23 +208,82 @@ describe("Coins API (/coins)", () => {
     });
   });
 
+  describe("PATCH /coins/:symbol", () => {
+    it("should deactivate and reactivate a tracked coin", async () => {
+      CoinRepository.create("BTC", "Bitcoin");
+
+      const deactivateResponse = await request
+        .patch("/coins/btc")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ isActive: false });
+
+      expect(deactivateResponse.status).toBe(200);
+      expect(CoinRepository.findBySymbol("BTC")).toMatchObject({
+        is_active: 0,
+      });
+      const inactiveCoins = await request
+        .get("/coins")
+        .set("Authorization", `Bearer ${validToken}`);
+      expect(inactiveCoins.body.data).toEqual([]);
+
+      const activateResponse = await request
+        .patch("/coins/BTC")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ isActive: true });
+
+      expect(activateResponse.status).toBe(200);
+      expect(CoinRepository.findBySymbol("BTC")).toMatchObject({
+        is_active: 1,
+      });
+    });
+
+    it("should return 404 when updating an untracked coin", async () => {
+      const response = await request
+        .patch("/coins/UNKNOWN")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ isActive: false });
+
+      expect(response.status).toBe(404);
+    });
+
+    it("should reject a missing, non-boolean, or extra status field", async () => {
+      const missing = await request
+        .patch("/coins/BTC")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({});
+      const nonBoolean = await request
+        .patch("/coins/BTC")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ isActive: "false" });
+      const extraField = await request
+        .patch("/coins/BTC")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ isActive: "false", name: "Bitcoin" });
+
+      expect(missing.status).toBe(400);
+      expect(nonBoolean.status).toBe(400);
+      expect(extraField.status).toBe(400);
+      expect(extraField.body.message).toContain("only 'isActive'");
+    });
+  });
+
   describe("GET /coins/:symbol/history", () => {
     it("should return saved price history for a tracked coin", async () => {
       mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "XRPUSDT", name: "XRP" });
-      PriceRepository.savePrice("XRPUSDT", 2.5);
+        .send({ symbol: "XRP", name: "XRP" });
+      PriceRepository.savePrice("XRP", 2.5);
 
       const response = await request
-        .get("/coins/xrpusdt/history?limit=10")
+        .get("/coins/xrp/history?limit=10")
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body).toMatchObject({ symbol: "XRPUSDT", count: 1 });
+      expect(response.body).toMatchObject({ symbol: "XRP", count: 1 });
       expect(response.body.data[0]).toMatchObject({
-        coin_symbol: "XRPUSDT",
+        coin_symbol: "XRP",
         price_usd: 2.5,
       });
     });
@@ -238,20 +297,20 @@ describe("Coins API (/coins)", () => {
     });
 
     it("should reject invalid pagination and date query parameters", async () => {
-      CoinRepository.create("XRPUSDT", "XRP");
+      CoinRepository.create("XRP", "XRP");
 
       const response = await request
-        .get("/coins/XRPUSDT/history?limit=-1&from=not-a-date")
+        .get("/coins/XRP/history?limit=-1&from=not-a-date")
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);
     });
 
     it("should reject unsupported history query parameters", async () => {
-      CoinRepository.create("XRPUSDT", "XRP");
+      CoinRepository.create("XRP", "XRP");
 
       const response = await request
-        .get("/coins/XRPUSDT/history?sort=asc")
+        .get("/coins/XRP/history?sort=asc")
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);

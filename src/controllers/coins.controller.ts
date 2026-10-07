@@ -90,6 +90,28 @@ export const deleteCoinBySymbol = (
   }
 };
 
+export const updateCoinStatus = (
+  req: Request<{ symbol: string }, unknown, { isActive: boolean }>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { symbol } = req.params;
+    const { isActive } = req.body;
+    const isUpdated = CoinRepository.updateCoinStatus(symbol, isActive);
+
+    if (!isUpdated) {
+      throw new AppError(`Coin '${symbol}' not found`, 404);
+    }
+
+    return res.status(200).json({
+      message: `Coin '${symbol.toUpperCase()}' successfully updated`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getCoinHistory = (
   req: Request<{ symbol: string }>,
   res: Response,

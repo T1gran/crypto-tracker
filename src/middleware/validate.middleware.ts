@@ -59,6 +59,27 @@ export const validateSymbolParam = (
   next();
 };
 
+export const validateStatusUpdate = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    return badRequest(res, "request body must be an object");
+  }
+
+  const keys = Object.keys(req.body);
+  if (keys.length !== 1 || keys[0] !== "isActive") {
+    return badRequest(res, "request body must contain only 'isActive'");
+  }
+
+  if (typeof req.body.isActive !== "boolean") {
+    return badRequest(res, "'isActive' is required and must be a boolean");
+  }
+
+  next();
+};
+
 export const validateHistoryQuery = (
   req: Request,
   res: Response,

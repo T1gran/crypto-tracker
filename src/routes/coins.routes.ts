@@ -5,12 +5,14 @@ import {
   getCoinBySymbol,
   getCoinHistory,
   getCoins,
+  updateCoinStatus,
 } from "../controllers/coins.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
 import {
   validateHistoryQuery,
   validateMiddleware,
   validateNoQuery,
+  validateStatusUpdate,
   validateSymbolParam,
 } from "../middleware/validate.middleware";
 
@@ -20,11 +22,28 @@ coinRouter.use(authMiddleware);
 
 coinRouter.get("/", validateNoQuery, getCoins);
 coinRouter.post("/", validateMiddleware, createCoin);
-coinRouter.get("/:symbol", validateSymbolParam, validateNoQuery, getCoinBySymbol);
-coinRouter.delete("/:symbol", validateSymbolParam, validateNoQuery, deleteCoinBySymbol);
+coinRouter.get(
+  "/:symbol",
+  validateSymbolParam,
+  validateNoQuery,
+  getCoinBySymbol,
+);
+coinRouter.delete(
+  "/:symbol",
+  validateSymbolParam,
+  validateNoQuery,
+  deleteCoinBySymbol,
+);
 coinRouter.get(
   "/:symbol/history",
   validateSymbolParam,
   validateHistoryQuery,
   getCoinHistory,
+);
+coinRouter.patch(
+  "/:symbol",
+  validateSymbolParam,
+  validateNoQuery,
+  validateStatusUpdate,
+  updateCoinStatus,
 );
