@@ -18,4 +18,10 @@ describe("Application routes", () => {
     expect(response.status).toBe(404);
     expect(response.body.message).toBe("Route not found");
   });
+
+  it("rejects query parameters on the health endpoint", async () => {
+    const response = await request.get("/?verbose=true");
+
+    expect(response.status).toBe(400);
+  });
 });

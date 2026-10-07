@@ -34,6 +34,15 @@ describe("Auth Middleware", () => {
     expect(response.body.message).toContain("invalid format");
   });
 
+  it("should return 401 if the Authorization header contains multiple tokens", async () => {
+    const response = await request
+      .get("/coins")
+      .set("Authorization", `Bearer ${validToken} extra`);
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toContain("invalid format");
+  });
+
   it("should return 401, if token is not found in database", async () => {
     const response = await request
       .get("/coins")

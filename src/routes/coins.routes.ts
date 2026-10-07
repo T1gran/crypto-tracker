@@ -7,14 +7,24 @@ import {
   getCoins,
 } from "../controllers/coins.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
-import { validateMiddleware } from "../middleware/validate.middleware";
+import {
+  validateHistoryQuery,
+  validateMiddleware,
+  validateNoQuery,
+  validateSymbolParam,
+} from "../middleware/validate.middleware";
 
 export const coinRouter = express.Router();
 
 coinRouter.use(authMiddleware);
 
-coinRouter.get("/", getCoins);
+coinRouter.get("/", validateNoQuery, getCoins);
 coinRouter.post("/", validateMiddleware, createCoin);
-coinRouter.get("/:symbol", getCoinBySymbol);
-coinRouter.delete("/:symbol", deleteCoinBySymbol);
-coinRouter.get("/:symbol/history", getCoinHistory);
+coinRouter.get("/:symbol", validateSymbolParam, validateNoQuery, getCoinBySymbol);
+coinRouter.delete("/:symbol", validateSymbolParam, validateNoQuery, deleteCoinBySymbol);
+coinRouter.get(
+  "/:symbol/history",
+  validateSymbolParam,
+  validateHistoryQuery,
+  getCoinHistory,
+);

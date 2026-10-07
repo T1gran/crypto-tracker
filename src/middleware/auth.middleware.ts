@@ -8,18 +8,14 @@ export const authMiddleware = (
 ) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader || !/^Bearer\s+[^\s]+$/.test(authHeader)) {
     throw new AppError(
       "Unauthorized: Authorization header missing or invalid format",
       401,
     );
   }
 
-  const authToken = authHeader.split(" ")[1]?.trim();
-
-  if (!authToken) {
-    throw new AppError("Unauthorized: Token is missing", 401);
-  }
+  const authToken = authHeader.slice("Bearer".length).trim();
 
   const apiKey = ApiKeyRepository.findByKeyValue(authToken);
 

@@ -54,13 +54,24 @@ describe("Coins API (/coins)", () => {
       expect(response.status).toBe(400);
     });
 
+    it("should reject unsupported fields and invalid field types", async () => {
+      const response = await request
+        .post("/coins")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ symbol: 123, name: "Bitcoin", isActive: true });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain("unsupported fields");
+      expect(mockedBinanceService.validateSymbol).not.toHaveBeenCalled();
+    });
+
     it("should return 404 if symbol is not found on Binance", async () => {
       mockedBinanceService.validateSymbol.mockResolvedValue(false);
 
       const response = await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "UNKNOWN_COIN", name: "Unknown Token" });
+        .send({ symbol: "UNKNOWNCOIN", name: "Unknown Token" });
 
       expect(response.status).toBe(404);
       expect(response.body.message).toContain("not found");
@@ -122,6 +133,14 @@ describe("Coins API (/coins)", () => {
 
       expect(response.status).toBe(401);
     });
+
+    it("should reject query parameters that this endpoint does not accept", async () => {
+      const response = await request
+        .get("/coins?limit=1")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
+    });
   });
 
   describe("GET /coins/:symbol", () => {
@@ -150,6 +169,14 @@ describe("Coins API (/coins)", () => {
 
       expect(response.status).toBe(404);
       expect(response.body.message).toContain("not found");
+    });
+
+    it("should reject an invalid symbol path parameter", async () => {
+      const response = await request
+        .get("/coins/%40")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
     });
   });
 
@@ -208,6 +235,26 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
+    });
+
+    it("should reject invalid pagination and date query parameters", async () => {
+      CoinRepository.create("XRPUSDT", "XRP");
+
+      const response = await request
+        .get("/coins/XRPUSDT/history?limit=-1&from=not-a-date")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
+    });
+
+    it("should reject unsupported history query parameters", async () => {
+      CoinRepository.create("XRPUSDT", "XRP");
+
+      const response = await request
+        .get("/coins/XRPUSDT/history?sort=asc")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
     });
   });
 });
