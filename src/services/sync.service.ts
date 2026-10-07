@@ -1,6 +1,6 @@
 import { CoinRepository } from "../db/repository/coin.repository";
 import { PriceRepository } from "../db/repository/price.repository";
-import { binanceService } from "./binance.service";
+import { coinMarketCapService } from "./coinmarketcap.service";
 
 export class PriceSyncService {
   private isRunning: boolean = false;
@@ -54,7 +54,10 @@ export class PriceSyncService {
     await Promise.allSettled(
       coins.map(async (coin) => {
         try {
-          const price = await binanceService.getPrice(coin.symbol);
+          const price = await coinMarketCapService.getPrice(
+            coin.symbol,
+            coin.name,
+          );
           if (price !== null) {
             fetchedPrices.push({ symbol: coin.symbol, price });
           }

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { CoinRepository } from "../db/repository/coin.repository";
-import { binanceService } from "../services/binance.service";
+import { coinMarketCapService } from "../services/coinmarketcap.service";
 import { PriceRepository } from "../db/repository/price.repository";
 import { AppError } from "../errors/app-error";
 
@@ -12,8 +12,11 @@ export const createCoin = async (
   try {
     const { symbol, name } = req.body ?? {};
 
-    const isTickerOnBinance = await binanceService.validateSymbol(symbol);
-    if (!isTickerOnBinance) {
+    const isTickerOnCmc = await coinMarketCapService.validateSymbol(
+      symbol,
+      name,
+    );
+    if (!isTickerOnCmc) {
       throw new AppError(`Coin '${symbol}' not found`, 404);
     }
 
