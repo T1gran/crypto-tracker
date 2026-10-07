@@ -6,6 +6,7 @@ export class CoinRepository {
     const formattedSymbol = symbol.toUpperCase().trim();
     const stmt = db.prepare("INSERT INTO coins (symbol, name) VALUES (?, ?)");
     stmt.run(formattedSymbol, name);
+    return this.findBySymbol(formattedSymbol)!;
   }
 
   static findBySymbol(symbol: string): CoinRow | null {
