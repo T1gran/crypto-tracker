@@ -3,14 +3,14 @@ import { initDb } from "../db/init";
 import { db } from "../db/database";
 import { CoinRepository } from "../db/repository/coin.repository";
 import { PriceRepository } from "../db/repository/price.repository";
-import { binanceService } from "../services/binance.service";
+import { coinMarketCapService } from "../services/coinmarketcap.service";
 import { PriceSyncService } from "../services/sync.service";
 
-jest.mock("../services/binance.service", () => ({
-  binanceService: { getPrice: jest.fn() },
+jest.mock("../services/coinmarketcap.service", () => ({
+  coinMarketCapService: { getPrice: jest.fn() },
 }));
 
-const mockedBinanceService = jest.mocked(binanceService);
+const mockedCoinMarketCapService = jest.mocked(coinMarketCapService);
 
 type SyncInternals = {
   syncAllPrices: () => Promise<void>;
@@ -41,7 +41,7 @@ describe("PriceSyncService", () => {
   it("stores prices for all tracked coins during a background sync", async () => {
     CoinRepository.create("BTCUSDT", "Bitcoin");
     CoinRepository.create("ETHUSDT", "Ethereum");
-    mockedBinanceService.getPrice
+    mockedCoinMarketCapService.getPrice
       .mockResolvedValueOnce(65000.5)
       .mockResolvedValueOnce(3200.25);
 
@@ -55,8 +55,8 @@ describe("PriceSyncService", () => {
   it("continues syncing other coins when the external API fails for one", async () => {
     CoinRepository.create("BTCUSDT", "Bitcoin");
     CoinRepository.create("ETHUSDT", "Ethereum");
-    const failure = new Error("Binance unavailable");
-    mockedBinanceService.getPrice
+    const failure = new Error("CoinMarketCap unavailable");
+    mockedCoinMarketCapService.getPrice
       .mockRejectedValueOnce(failure)
       .mockResolvedValueOnce(3200.25);
     const logError = jest.spyOn(console, "error").mockImplementation(() => undefined);

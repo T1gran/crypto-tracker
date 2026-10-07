@@ -13,17 +13,17 @@ import { initDb } from "../db/init";
 import { db } from "../db/database";
 import { ApiKeyRepository } from "../db/repository/api-key.repository";
 import { CoinRepository } from "../db/repository/coin.repository";
-import { binanceService } from "../services/binance.service";
+import { coinMarketCapService } from "../services/coinmarketcap.service";
 import { PriceRepository } from "../db/repository/price.repository";
 
-jest.mock("../services/binance.service", () => ({
-  binanceService: {
+jest.mock("../services/coinmarketcap.service", () => ({
+  coinMarketCapService: {
     validateSymbol: jest.fn(),
     getPrice: jest.fn(),
   },
 }));
 
-const mockedBinanceService = jest.mocked(binanceService);
+const mockedCoinMarketCapService = jest.mocked(coinMarketCapService);
 
 const request = supertest(app);
 
@@ -62,11 +62,11 @@ describe("Coins API (/coins)", () => {
 
       expect(response.status).toBe(400);
       expect(response.body.message).toContain("unsupported fields");
-      expect(mockedBinanceService.validateSymbol).not.toHaveBeenCalled();
+      expect(mockedCoinMarketCapService.validateSymbol).not.toHaveBeenCalled();
     });
 
-    it("should return 404 if symbol is not found on Binance", async () => {
-      mockedBinanceService.validateSymbol.mockResolvedValue(false);
+    it("should return 404 if symbol is not found on CoinMarketCap", async () => {
+      mockedCoinMarketCapService.validateSymbol.mockResolvedValue(false);
 
       const response = await request
         .post("/coins")
@@ -78,7 +78,7 @@ describe("Coins API (/coins)", () => {
     });
 
     it("should return 201 and create coin successfully", async () => {
-      mockedBinanceService.validateSymbol.mockResolvedValue(true);
+      mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
 
       const response = await request
         .post("/coins")
@@ -93,7 +93,7 @@ describe("Coins API (/coins)", () => {
     });
 
     it("should return 409 if coin is already tracked", async () => {
-      mockedBinanceService.validateSymbol.mockResolvedValue(true);
+      mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
 
       await request
         .post("/coins")
@@ -112,7 +112,7 @@ describe("Coins API (/coins)", () => {
 
   describe("GET /coins", () => {
     it("should return list containing the created coin", async () => {
-      mockedBinanceService.validateSymbol.mockResolvedValue(true);
+      mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
 
       await request
         .post("/coins")
@@ -145,7 +145,7 @@ describe("Coins API (/coins)", () => {
 
   describe("GET /coins/:symbol", () => {
     it("should return a tracked coin", async () => {
-      mockedBinanceService.validateSymbol.mockResolvedValue(true);
+      mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
@@ -182,7 +182,7 @@ describe("Coins API (/coins)", () => {
 
   describe("DELETE /coins/:symbol", () => {
     it("should delete a tracked coin", async () => {
-      mockedBinanceService.validateSymbol.mockResolvedValue(true);
+      mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
@@ -210,7 +210,7 @@ describe("Coins API (/coins)", () => {
 
   describe("GET /coins/:symbol/history", () => {
     it("should return saved price history for a tracked coin", async () => {
-      mockedBinanceService.validateSymbol.mockResolvedValue(true);
+      mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
       await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)

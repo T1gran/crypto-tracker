@@ -19,7 +19,7 @@ export class CoinMarketCapService {
 
   constructor() {
     this.client = axios.create({
-      baseURL: "",
+      baseURL: CMC_API_URL,
       timeout: 5000,
     });
   }
@@ -39,7 +39,7 @@ export class CoinMarketCapService {
             "X-CMC_PRO_API_KEY": CMC_API_KEY,
             Accept: "application/json",
           },
-          params: { symbol: formattedSymbol, name: name },
+          params: { symbol: formattedSymbol, name, convert },
         },
       );
 
