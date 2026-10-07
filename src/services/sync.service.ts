@@ -49,12 +49,14 @@ export class PriceSyncService {
     const coins = CoinRepository.findAll();
     if (coins.length === 0) return;
 
+    const fetchedPrices: Array<{ symbol: string; price: number }> = [];
+
     await Promise.allSettled(
       coins.map(async (coin) => {
         try {
           const price = await binanceService.getPrice(coin.symbol);
           if (price !== null) {
-            PriceRepository.savePrice(coin.symbol, price);
+            fetchedPrices.push({ symbol: coin.symbol, price });
           }
         } catch (error) {
           console.error(
@@ -64,6 +66,9 @@ export class PriceSyncService {
         }
       }),
     );
+    if (fetchedPrices.length > 0) {
+      PriceRepository.savePricesBatch(fetchedPrices);
+    }
   }
 }
 
