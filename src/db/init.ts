@@ -29,13 +29,5 @@ export const initDb = (): void => {
     ON price_history(coin_symbol, fetched_at DESC);
   `);
 
-  const defaultKey = process.env.DEFAULT_API_KEY || "dev-secret-key";
-  db.prepare(
-    `
-    INSERT OR IGNORE INTO api_keys (key_value, client_name) 
-    VALUES (?, ?)
-  `,
-  ).run(defaultKey, "Development Client");
-
   console.log("Database initialized successfully.");
 };
