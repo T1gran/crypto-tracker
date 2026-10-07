@@ -10,13 +10,13 @@ const request = supertest(app);
 describe("Auth Middleware", () => {
   const validToken = "test_bearer_token";
 
-  beforeAll(() => {
-    initDb();
-    ApiKeyRepository.create(validToken, "Test Client");
+  beforeAll(async () => {
+    await initDb();
+    await ApiKeyRepository.create(validToken, "Test Client");
   });
 
-  afterAll(() => {
-    db.close();
+  afterAll(async () => {
+    await db.close();
   });
 
   it("should return 401, if header Authorization is missing", async () => {
