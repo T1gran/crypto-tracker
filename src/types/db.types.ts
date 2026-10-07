@@ -11,6 +11,8 @@ export interface CoinRow {
   name: string;
   is_active: number;
   created_at: string;
+  updated_at: string;
+  last_synced_at: string | null;
 }
 
 export interface PriceHistoryRow {

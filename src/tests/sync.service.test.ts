@@ -50,6 +50,10 @@ describe("PriceSyncService", () => {
     expect(PriceRepository.getHistoryBySymbol("BTCUSDT")).toHaveLength(1);
     expect(PriceRepository.getHistoryBySymbol("BTCUSDT")[0].price_usd).toBe(65000.5);
     expect(PriceRepository.getHistoryBySymbol("ETHUSDT")[0].price_usd).toBe(3200.25);
+    expect(CoinRepository.findBySymbol("BTCUSDT")).toMatchObject({
+      last_synced_at: expect.any(String),
+      updated_at: expect.any(String),
+    });
   });
 
   it("continues syncing other coins when the external API fails for one", async () => {

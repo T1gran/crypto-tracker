@@ -4,6 +4,7 @@ import {
   deleteCoinBySymbol,
   getCoinBySymbol,
   getCoinHistory,
+  getCurrentCoinPrice,
   getCoins,
   updateCoinStatus,
 } from "../controllers/coins.controller";
@@ -22,6 +23,12 @@ coinRouter.use(authMiddleware);
 
 coinRouter.get("/", validateNoQuery, getCoins);
 coinRouter.post("/", validateMiddleware, createCoin);
+coinRouter.get(
+  "/:symbol/price",
+  validateSymbolParam,
+  validateNoQuery,
+  getCurrentCoinPrice,
+);
 coinRouter.get(
   "/:symbol",
   validateSymbolParam,

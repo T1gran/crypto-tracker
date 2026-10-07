@@ -4,10 +4,17 @@ import { db } from "../database";
 export class PriceRepository {
   static savePrice(symbol: string, priceUsd: number) {
     const formattedSymbol = symbol.toUpperCase().trim();
-    const stmt = db.prepare(
+    const insertPrice = db.prepare(
       "INSERT INTO price_history (coin_symbol, price_usd) VALUES (?,?)",
     );
-    stmt.run(formattedSymbol, priceUsd);
+    const updateCoin = db.prepare(
+      "UPDATE coins SET last_synced_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE symbol = ?",
+    );
+
+    db.transaction(() => {
+      insertPrice.run(formattedSymbol, priceUsd);
+      updateCoin.run(formattedSymbol);
+    })();
   }
 
   static getHistoryBySymbol(
@@ -45,10 +52,14 @@ export class PriceRepository {
     const stmt = db.prepare(
       "INSERT INTO price_history (coin_symbol, price_usd) VALUES (?, ?)",
     );
+    const updateCoin = db.prepare(
+      "UPDATE coins SET last_synced_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE symbol = ?",
+    );
 
     const insertMany = db.transaction((data: typeof items) => {
       for (const item of data) {
         stmt.run(item.symbol, item.price);
+        updateCoin.run(item.symbol.toUpperCase().trim());
       }
     });
 

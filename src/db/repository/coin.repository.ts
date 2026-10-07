@@ -34,7 +34,9 @@ export class CoinRepository {
 
   static updateCoinStatus(symbol: string, isActive: boolean) {
     const formattedSymbol = symbol.toUpperCase().trim();
-    const stmt = db.prepare("UPDATE coins SET is_active = ? WHERE symbol = ?");
+    const stmt = db.prepare(
+      "UPDATE coins SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE symbol = ?",
+    );
     const info = stmt.run(isActive ? 1 : 0, formattedSymbol);
     return info.changes > 0;
   }

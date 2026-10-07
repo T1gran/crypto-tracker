@@ -182,6 +182,52 @@ describe("Coins API (/coins)", () => {
     });
   });
 
+  describe("GET /coins/:symbol/price", () => {
+    it("should fetch, persist, and return the current USD price", async () => {
+      CoinRepository.create("BTC", "Bitcoin");
+      mockedCoinMarketCapService.getPrice.mockResolvedValue(65000.5);
+
+      const response = await request
+        .get("/coins/btc/price")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        symbol: "BTC",
+        price_usd: 65000.5,
+      });
+      expect(response.body.data.last_synced_at).toEqual(expect.any(String));
+      expect(PriceRepository.getHistoryBySymbol("BTC")[0]).toMatchObject({
+        price_usd: 65000.5,
+      });
+      expect(CoinRepository.findBySymbol("BTC")).toMatchObject({
+        last_synced_at: expect.any(String),
+        updated_at: expect.any(String),
+      });
+    });
+
+    it("should return 503 and not create history when the price is unavailable", async () => {
+      CoinRepository.create("BTC", "Bitcoin");
+      mockedCoinMarketCapService.getPrice.mockResolvedValue(null);
+
+      const response = await request
+        .get("/coins/BTC/price")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(503);
+      expect(response.body.message).toContain("temporarily unavailable");
+      expect(PriceRepository.getHistoryBySymbol("BTC")).toEqual([]);
+    });
+
+    it("should return 404 for an untracked coin", async () => {
+      const response = await request
+        .get("/coins/UNKNOWN/price")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(404);
+    });
+  });
+
   describe("DELETE /coins/:symbol", () => {
     it("should delete a tracked coin", async () => {
       mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);

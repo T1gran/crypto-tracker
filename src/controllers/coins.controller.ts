@@ -69,6 +69,38 @@ export const getCoinBySymbol = (
   }
 };
 
+export const getCurrentCoinPrice = async (
+  req: Request<{ symbol: string }>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { symbol } = req.params;
+    const coin = CoinRepository.findBySymbol(symbol);
+    if (!coin) {
+      throw new AppError(`Coin '${symbol}' not found`, 404);
+    }
+
+    const price = await coinMarketCapService.getPrice(coin.symbol, coin.name);
+    if (price === null) {
+      throw new AppError("Current price is temporarily unavailable", 503);
+    }
+
+    PriceRepository.savePrice(coin.symbol, price);
+    const updatedCoin = CoinRepository.findBySymbol(coin.symbol)!;
+
+    return res.status(200).json({
+      data: {
+        symbol: updatedCoin.symbol,
+        price_usd: price,
+        last_synced_at: updatedCoin.last_synced_at,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteCoinBySymbol = (
   req: Request<{ symbol: string }>,
   res: Response,
