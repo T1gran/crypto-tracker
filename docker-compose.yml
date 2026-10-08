@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_PATH: /app/db/crypto.db
+    volumes:
+      - sqlite-data:/app/db
+    restart: unless-stopped
+
+volumes:
+  sqlite-data:
