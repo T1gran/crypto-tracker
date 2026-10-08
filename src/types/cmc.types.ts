@@ -15,7 +15,7 @@ export interface CmcSimplePriceResponse {
   data: CmcSimpleData[];
   status: {
     timestamp: string;
-    error_code: number;
+    error_code: number | string;
     error_message: string;
     elapsed: number;
     credit_count: number;

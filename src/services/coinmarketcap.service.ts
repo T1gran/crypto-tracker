@@ -47,7 +47,8 @@ export class CoinMarketCapService {
         },
       );
 
-      if (response.data?.status?.error_code !== 0) {
+      const errorCode = response.data?.status?.error_code;
+      if (errorCode !== 0 && errorCode !== "0") {
         console.error(
           `CoinMarketCap returned an error for ${formattedSymbol}:`,
           response.data?.status,
