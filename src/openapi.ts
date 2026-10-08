@@ -204,12 +204,14 @@ export const openApiSpec = {
           {
             name: "from",
             in: "query",
-            schema: { type: "string", format: "date-time" },
+            description: "Inclusive lower bound. Date-times require Z or a timezone offset; a date means 00:00:00.000 UTC.",
+            schema: { oneOf: [{ type: "string", format: "date" }, { type: "string", format: "date-time" }] },
           },
           {
             name: "to",
             in: "query",
-            schema: { type: "string", format: "date-time" },
+            description: "Inclusive upper bound. Date-times require Z or a timezone offset; a date means 23:59:59.999 UTC. Must not precede from.",
+            schema: { oneOf: [{ type: "string", format: "date" }, { type: "string", format: "date-time" }] },
           },
         ],
         responses: {

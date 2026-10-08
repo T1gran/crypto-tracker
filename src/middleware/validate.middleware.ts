@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { normalizeHistoryRange } from "../utils/date-time";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9]{2,20}$/;
 const MAX_COIN_NAME_LENGTH = 100;
@@ -6,11 +7,6 @@ const HISTORY_QUERY_KEYS = new Set(["limit", "offset", "from", "to"]);
 
 const badRequest = (res: Response, message: string) =>
   res.status(400).json({ message: `Bad request: ${message}` });
-
-const isValidDate = (value: string) =>
-  /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?)?$/.test(
-    value,
-  ) && !Number.isNaN(Date.parse(value));
 
 export const validateMiddleware = (
   req: Request,
@@ -108,20 +104,7 @@ export const validateHistoryQuery = (
     );
   }
 
-  if (
-    (from !== undefined && (typeof from !== "string" || !isValidDate(from))) ||
-    (to !== undefined && (typeof to !== "string" || !isValidDate(to)))
-  ) {
-    return badRequest(res, "'from' and 'to' must be valid ISO-8601 dates");
-  }
-
-  if (
-    typeof from === "string" &&
-    typeof to === "string" &&
-    new Date(from) > new Date(to)
-  ) {
-    return badRequest(res, "'from' must not be later than 'to'");
-  }
+  normalizeHistoryRange(from, to);
 
   next();
 };

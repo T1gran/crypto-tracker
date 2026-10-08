@@ -66,6 +66,11 @@ describe("CMC response integration", () => {
 
     expect(response.status).toBe(201);
     expect(response.body.data).toMatchObject({ symbol: "BTC", name: "Bitcoin" });
+    for (const field of ["created_at", "updated_at"]) {
+      expect(response.body.data[field]).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+    }
     expect(CoinRepository.findBySymbol("BTC")).toMatchObject({
       id: response.body.data.id,
       symbol: "BTC",
@@ -97,6 +102,9 @@ describe("CMC response integration", () => {
     ]);
     expect(CoinRepository.findBySymbol("BTC")?.last_synced_at).toBe(
       response.body.data.last_synced_at,
+    );
+    expect(response.body.data.last_synced_at).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
     );
   });
 

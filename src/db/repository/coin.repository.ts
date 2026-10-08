@@ -4,8 +4,11 @@ import { db } from "../database";
 export class CoinRepository {
   static create(symbol: string, name: string) {
     const formattedSymbol = symbol.toUpperCase().trim();
-    const stmt = db.prepare("INSERT INTO coins (symbol, name) VALUES (?, ?)");
-    stmt.run(formattedSymbol, name);
+    const timestamp = new Date().toISOString();
+    const stmt = db.prepare(
+      "INSERT INTO coins (symbol, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+    );
+    stmt.run(formattedSymbol, name, timestamp, timestamp);
     return this.findBySymbol(formattedSymbol)!;
   }
 
@@ -35,9 +38,9 @@ export class CoinRepository {
   static updateCoinStatus(symbol: string, isActive: boolean) {
     const formattedSymbol = symbol.toUpperCase().trim();
     const stmt = db.prepare(
-      "UPDATE coins SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE symbol = ?",
+      "UPDATE coins SET is_active = ?, updated_at = ? WHERE symbol = ?",
     );
-    const info = stmt.run(isActive ? 1 : 0, formattedSymbol);
+    const info = stmt.run(isActive ? 1 : 0, new Date().toISOString(), formattedSymbol);
     return info.changes > 0;
   }
 }
