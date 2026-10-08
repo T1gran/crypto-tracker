@@ -1,0 +1,224 @@
+# Crypto Price Tracker API
+
+REST API на Node.js, Express и TypeScript для ведения списка криптовалют,
+получения актуальных цен из CoinMarketCap и хранения истории цен в SQLite.
+
+## Возможности
+
+- добавление и удаление отслеживаемых монет;
+- включение и отключение монет;
+- получение и сохранение актуальной цены в USD;
+- фоновое обновление цен активных монет каждые 30 секунд;
+- история цен с пагинацией и фильтрацией по дате;
+- авторизация API-ключом;
+- OpenAPI 3.0 и Swagger UI;
+- запуск локально или через Docker Compose.
+
+## Требования
+
+Для локального запуска нужны:
+
+- Node.js 22;
+- npm;
+- API-ключ CoinMarketCap.
+
+Для контейнерного запуска нужны Docker и Docker Compose.
+
+## Переменные окружения
+
+Создайте `.env` из примера:
+
+```bash
+cp .env.example .env
+```
+
+| Переменная | Обязательна | Значение по умолчанию | Описание |
+| --- | --- | --- | --- |
+| `PORT` | нет | `3000` | HTTP-порт приложения. В Docker внутренний порт всегда `3000`. |
+| `DB_PATH` | нет | `./db/crypto.db` | Путь к файлу SQLite. Docker Compose переопределяет его на `/app/db/crypto.db`. |
+| `CMC_API_URL` | да | — | Базовый URL CoinMarketCap API. |
+| `CMC_API_KEY` | да | — | API-ключ CoinMarketCap. |
+| `NODE_ENV` | нет | — | Режим приложения, например `development`, `test` или `production`. |
+| `HOST_PORT` | нет | `3000` | Только для Docker Compose: порт приложения на хосте. |
+
+Пример `.env`:
+
+```dotenv
+PORT=3000
+DB_PATH=./db/crypto.db
+CMC_API_URL=<base-url>
+CMC_API_KEY=<api-key>
+NODE_ENV=development
+```
+
+Не добавляйте `.env` и рабочую базу данных в Git.
+
+## Локальный запуск
+
+Установите зависимости:
+
+```bash
+npm ci
+```
+
+Инициализируйте БД и создайте API-ключ для доступа к защищённым маршрутам:
+
+```bash
+npm run seed
+```
+
+Команда напечатает созданный ключ. Сохраните его: он понадобится в заголовке
+`Authorization`.
+
+Запустите приложение:
+
+```bash
+npm start
+```
+
+Сервер будет доступен по адресу `http://localhost:3000`. `nodemon`
+автоматически перезапускает приложение при изменении исходного кода.
+
+## Запуск через Docker Compose
+
+После создания и заполнения `.env` соберите образ:
+
+```bash
+docker compose build
+```
+
+Создайте базу и API-ключ в Docker volume:
+
+```bash
+docker compose run --rm app node dist/db/seed.js
+```
+
+Затем запустите приложение:
+
+```bash
+docker compose up -d
+```
+
+Просмотр логов и остановка:
+
+```bash
+docker compose logs -f app
+docker compose down
+```
+
+SQLite хранится в именованном volume `sqlite-data`, поэтому обычный
+`docker compose down` не удаляет данные. Команда `docker compose down -v`
+удалит volume вместе с базой данных.
+
+Чтобы открыть приложение на другом порту хоста:
+
+```bash
+HOST_PORT=8080 docker compose up -d
+```
+
+В этом случае API будет доступен на `http://localhost:8080`.
+
+## Инициализация и миграция БД
+
+Отдельной команды миграции в проекте нет. При каждом запуске сервера вызывается
+идемпотентная функция `initDb()`, которая:
+
+- создаёт таблицы `api_keys`, `coins` и `price_history`, если их ещё нет;
+- создаёт индекс истории цен;
+- добавляет отсутствующие колонки `updated_at` и `last_synced_at` в старую
+  таблицу `coins`.
+
+Локально база по умолчанию создаётся в `./db/crypto.db`. Каталог создаётся
+автоматически. Для повторного создания API-ключа снова выполните `npm run seed`.
+В Docker используйте команду seed из раздела выше — она работает с тем же
+volume, что и приложение.
+
+В тестовом окружении используется SQLite `:memory:`, поэтому тесты не изменяют
+локальный файл БД.
+
+## Авторизация
+
+Все маршруты `/coins` требуют Bearer API key:
+
+```http
+Authorization: Bearer key_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Health check и документация Swagger доступны без авторизации.
+
+## API
+
+Базовый URL при локальном запуске: `http://localhost:3000`.
+
+| Метод | Путь | Описание |
+| --- | --- | --- |
+| `GET` | `/` | Проверка состояния приложения. |
+| `GET` | `/coins` | Список активных отслеживаемых монет. |
+| `POST` | `/coins` | Добавить монету после проверки в CoinMarketCap. |
+| `GET` | `/coins/{symbol}` | Получить отслеживаемую монету. |
+| `PATCH` | `/coins/{symbol}` | Активировать или деактивировать монету. |
+| `DELETE` | `/coins/{symbol}` | Удалить монету и связанную историю цен. |
+| `GET` | `/coins/{symbol}/price` | Получить текущую цену и сохранить её в историю. |
+| `GET` | `/coins/{symbol}/history` | Получить историю цен. |
+
+### Добавление монеты
+
+```bash
+curl -X POST http://localhost:3000/coins \
+  -H "Authorization: Bearer <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"BTC","name":"Bitcoin"}'
+```
+
+CMC-ответ проверяется до записи данных: код `status.error_code` должен быть
+равен `0`, актив должен совпадать с запрошенными `symbol` и `name`, а цена
+должна быть конечным числом больше нуля.
+
+### Изменение статуса монеты
+
+```bash
+curl -X PATCH http://localhost:3000/coins/BTC \
+  -H "Authorization: Bearer <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"isActive":false}'
+```
+
+### История цен
+
+Маршрут поддерживает параметры:
+
+- `limit` — от `1` до `1000`, по умолчанию `100`;
+- `offset` — от `0` до `1000000`, по умолчанию `0`;
+- `from` — начало диапазона в формате ISO 8601;
+- `to` — конец диапазона в формате ISO 8601.
+
+Пример:
+
+```bash
+curl "http://localhost:3000/coins/BTC/history?limit=25&offset=0" \
+  -H "Authorization: Bearer <api-key>"
+```
+
+Основные коды ошибок:
+
+- `400` — неверные параметры или тело запроса;
+- `401` — отсутствующий или неверный API-ключ;
+- `404` — монета не найдена локально или в CoinMarketCap;
+- `409` — монета уже отслеживается;
+- `502` — CoinMarketCap недоступен или вернул некорректный ответ.
+
+## Swagger / OpenAPI
+
+- Swagger UI: `http://localhost:3000/api-docs`
+- OpenAPI JSON: `http://localhost:3000/api-docs/openapi.json`
+
+В Swagger UI нажмите **Authorize** и вставьте созданный API-ключ без префикса
+`Bearer`.
+
+## Тесты
+
+```bash
+npm test
+```
+
+Тесты запускаются последовательно и используют отдельную базу в памяти.
