@@ -1,5 +1,9 @@
 import axios, { AxiosInstance } from "axios";
 import { CmcSimplePriceResponse } from "../types/cmc.types";
+import {
+  CoinMarketCapNotFoundError,
+  CoinMarketCapUpstreamError,
+} from "../errors/coinmarketcap.error";
 
 const CMC_API_KEY = process.env.CMC_API_KEY;
 const CMC_API_URL = process.env.CMC_API_URL;
@@ -28,10 +32,10 @@ export class CoinMarketCapService {
     symbol: string,
     name: string,
     convert = "USD",
-  ): Promise<number | null> {
-    try {
-      const formattedSymbol = symbol.toUpperCase().trim();
+  ): Promise<number> {
+    const formattedSymbol = symbol.toUpperCase().trim();
 
+    try {
       const response = await this.client.get<CmcSimplePriceResponse>(
         "/v2/simple/price",
         {
@@ -44,9 +48,15 @@ export class CoinMarketCapService {
       );
 
       const coins = response.data?.data;
-      if (!coins || coins.length === 0) {
-        console.warn(`Token ${formattedSymbol} not found`);
-        return null;
+      if (Array.isArray(coins) && coins.length === 0) {
+        throw new CoinMarketCapNotFoundError(formattedSymbol);
+      }
+
+      if (!Array.isArray(coins)) {
+        console.error(
+          `CoinMarketCap returned an invalid price response for ${formattedSymbol}`,
+        );
+        throw new CoinMarketCapUpstreamError();
       }
 
       const targetCoin = coins[0];
@@ -56,11 +66,21 @@ export class CoinMarketCapService {
       );
 
       if (!targetQuote) {
-        console.warn(`Currency ${convert} did not found in quotes`);
-        return null;
+        console.error(
+          `CoinMarketCap returned no ${convert} quote for ${formattedSymbol}`,
+        );
+        throw new CoinMarketCapUpstreamError();
       }
       return targetQuote.price;
     } catch (error) {
+      if (error instanceof CoinMarketCapNotFoundError) {
+        throw error;
+      }
+
+      if (error instanceof CoinMarketCapUpstreamError) {
+        throw error;
+      }
+
       if (axios.isAxiosError(error)) {
         console.error(
           `CoinMarketCap API error for ${symbol}:`,
@@ -69,14 +89,21 @@ export class CoinMarketCapService {
       } else {
         console.error(`Unexpected error fetching price for ${symbol}:`, error);
       }
-      return null;
+      throw new CoinMarketCapUpstreamError();
     }
   }
 
   async validateSymbol(symbol: string, name: string): Promise<boolean> {
     const formattedSymbol = symbol.toUpperCase().trim();
-    const price = await this.getPrice(formattedSymbol, name);
-    return price !== null;
+    try {
+      await this.getPrice(formattedSymbol, name);
+      return true;
+    } catch (error) {
+      if (error instanceof CoinMarketCapNotFoundError) {
+        return false;
+      }
+      throw error;
+    }
   }
 }
 

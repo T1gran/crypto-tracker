@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import axios, { AxiosError } from "axios";
+import {
+  CoinMarketCapNotFoundError,
+  CoinMarketCapUpstreamError,
+} from "../errors/coinmarketcap.error";
 import { CoinMarketCapService } from "../services/coinmarketcap.service";
 
 type Client = {
@@ -51,7 +55,7 @@ describe("CoinMarketCapService", () => {
     });
   });
 
-  it("returns null and logs a response error from CoinMarketCap", async () => {
+  it("throws an upstream error when CoinMarketCap rejects the request", async () => {
     const service = new CoinMarketCapService();
     const error = new AxiosError("Request failed with status code 429");
     error.response = { data: { code: -1003, msg: "Too many requests" } } as never;
@@ -60,14 +64,16 @@ describe("CoinMarketCapService", () => {
     setClient(service, client);
     const logError = jest.spyOn(console, "error").mockImplementation(() => undefined);
 
-    await expect(service.getPrice("BTC", "Bitcoin")).resolves.toBeNull();
+    await expect(service.getPrice("BTC", "Bitcoin")).rejects.toBeInstanceOf(
+      CoinMarketCapUpstreamError,
+    );
     expect(logError).toHaveBeenCalledWith("CoinMarketCap API error for BTC:", {
       code: -1003,
       msg: "Too many requests",
     });
   });
 
-  it("returns null and logs an unexpected network failure", async () => {
+  it("throws an upstream error for an unexpected network failure", async () => {
     const service = new CoinMarketCapService();
     const networkError = new Error("socket disconnected");
     const client: Client = { get: jest.fn() };
@@ -75,7 +81,9 @@ describe("CoinMarketCapService", () => {
     setClient(service, client);
     const logError = jest.spyOn(console, "error").mockImplementation(() => undefined);
 
-    await expect(service.getPrice("ETH", "Ethereum")).resolves.toBeNull();
+    await expect(service.getPrice("ETH", "Ethereum")).rejects.toBeInstanceOf(
+      CoinMarketCapUpstreamError,
+    );
     expect(logError).toHaveBeenCalledWith(
       "Unexpected error fetching price for ETH:",
       networkError,
@@ -90,5 +98,28 @@ describe("CoinMarketCapService", () => {
     jest.spyOn(console, "warn").mockImplementation(() => undefined);
 
     await expect(service.validateSymbol("BTC", "Bitcoin")).resolves.toBe(false);
+  });
+
+  it("throws a not-found error when requesting a missing coin price", async () => {
+    const service = new CoinMarketCapService();
+    const client: Client = { get: jest.fn() };
+    client.get.mockResolvedValue({ data: { data: [] } });
+    setClient(service, client);
+
+    await expect(service.getPrice("UNKNOWN", "Unknown")).rejects.toBeInstanceOf(
+      CoinMarketCapNotFoundError,
+    );
+  });
+
+  it("treats a malformed CoinMarketCap response as an upstream failure", async () => {
+    const service = new CoinMarketCapService();
+    const client: Client = { get: jest.fn() };
+    client.get.mockResolvedValue({ data: { data: undefined } });
+    setClient(service, client);
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(service.getPrice("BTC", "Bitcoin")).rejects.toBeInstanceOf(
+      CoinMarketCapUpstreamError,
+    );
   });
 });

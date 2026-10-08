@@ -82,10 +82,6 @@ export const getCurrentCoinPrice = async (
     }
 
     const price = await coinMarketCapService.getPrice(coin.symbol, coin.name);
-    if (price === null) {
-      throw new AppError("Current price is temporarily unavailable", 503);
-    }
-
     PriceRepository.savePrice(coin.symbol, price);
     const updatedCoin = CoinRepository.findBySymbol(coin.symbol)!;
 

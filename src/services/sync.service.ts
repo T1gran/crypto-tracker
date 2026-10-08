@@ -58,9 +58,7 @@ export class PriceSyncService {
             coin.symbol,
             coin.name,
           );
-          if (price !== null) {
-            fetchedPrices.push({ symbol: coin.symbol, price });
-          }
+          fetchedPrices.push({ symbol: coin.symbol, price });
         } catch (error) {
           console.error(
             `[PriceSyncService] Failed to fetch price for '${coin.symbol}':`,

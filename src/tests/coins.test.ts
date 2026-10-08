@@ -15,6 +15,7 @@ import { ApiKeyRepository } from "../db/repository/api-key.repository";
 import { CoinRepository } from "../db/repository/coin.repository";
 import { coinMarketCapService } from "../services/coinmarketcap.service";
 import { PriceRepository } from "../db/repository/price.repository";
+import { CoinMarketCapUpstreamError } from "../errors/coinmarketcap.error";
 
 jest.mock("../services/coinmarketcap.service", () => ({
   coinMarketCapService: {
@@ -77,6 +78,20 @@ describe("Coins API (/coins)", () => {
 
       expect(response.status).toBe(404);
       expect(response.body.message).toContain("not found");
+    });
+
+    it("should return 502 when CoinMarketCap is unavailable", async () => {
+      mockedCoinMarketCapService.validateSymbol.mockRejectedValue(
+        new CoinMarketCapUpstreamError(),
+      );
+
+      const response = await request
+        .post("/coins")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ symbol: "BTC", name: "Bitcoin" });
+
+      expect(response.status).toBe(502);
+      expect(response.body.message).toContain("CoinMarketCap");
     });
 
     it("should return 201 and create coin successfully", async () => {
@@ -206,16 +221,18 @@ describe("Coins API (/coins)", () => {
       });
     });
 
-    it("should return 503 and not create history when the price is unavailable", async () => {
+    it("should return 502 and not create history when CoinMarketCap is unavailable", async () => {
       CoinRepository.create("BTC", "Bitcoin");
-      mockedCoinMarketCapService.getPrice.mockResolvedValue(null);
+      mockedCoinMarketCapService.getPrice.mockRejectedValue(
+        new CoinMarketCapUpstreamError(),
+      );
 
       const response = await request
         .get("/coins/BTC/price")
         .set("Authorization", `Bearer ${validToken}`);
 
-      expect(response.status).toBe(503);
-      expect(response.body.message).toContain("temporarily unavailable");
+      expect(response.status).toBe(502);
+      expect(response.body.message).toContain("CoinMarketCap");
       expect(PriceRepository.getHistoryBySymbol("BTC")).toEqual([]);
     });
 
