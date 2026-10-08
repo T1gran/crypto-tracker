@@ -47,6 +47,14 @@ export class CoinMarketCapService {
         },
       );
 
+      if (response.data?.status?.error_code !== 0) {
+        console.error(
+          `CoinMarketCap returned an error for ${formattedSymbol}:`,
+          response.data?.status,
+        );
+        throw new CoinMarketCapUpstreamError();
+      }
+
       const coins = response.data?.data;
       if (Array.isArray(coins) && coins.length === 0) {
         throw new CoinMarketCapNotFoundError(formattedSymbol);
@@ -61,13 +69,32 @@ export class CoinMarketCapService {
 
       const targetCoin = coins[0];
 
+      if (
+        typeof targetCoin?.symbol !== "string" ||
+        targetCoin.symbol.toUpperCase().trim() !== formattedSymbol ||
+        typeof targetCoin.name !== "string" ||
+        targetCoin.name.toUpperCase().trim() !== name.toUpperCase().trim()
+      ) {
+        console.error(
+          `CoinMarketCap returned a different asset for ${formattedSymbol}`,
+        );
+        throw new CoinMarketCapUpstreamError();
+      }
+
       const targetQuote = targetCoin.quotes.find(
-        (q) => q.symbol.toUpperCase() === convert,
+        (q) =>
+          typeof q.symbol === "string" &&
+          q.symbol.toUpperCase() === convert.toUpperCase(),
       );
 
-      if (!targetQuote) {
+      if (
+        !targetQuote ||
+        typeof targetQuote.price !== "number" ||
+        !Number.isFinite(targetQuote.price) ||
+        targetQuote.price <= 0
+      ) {
         console.error(
-          `CoinMarketCap returned no ${convert} quote for ${formattedSymbol}`,
+          `CoinMarketCap returned an invalid ${convert} quote for ${formattedSymbol}`,
         );
         throw new CoinMarketCapUpstreamError();
       }

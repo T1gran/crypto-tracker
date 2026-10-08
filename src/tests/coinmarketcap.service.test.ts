@@ -14,6 +14,8 @@ const setClient = (service: CoinMarketCapService, client: Client) => {
   (service as unknown as { client: Client }).client = client;
 };
 
+const successfulStatus = { error_code: 0 };
+
 describe("CoinMarketCapService", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -33,8 +35,11 @@ describe("CoinMarketCapService", () => {
     const client: Client = { get: jest.fn() };
     client.get.mockResolvedValue({
       data: {
+        status: successfulStatus,
         data: [
           {
+            symbol: "BTC",
+            name: "Bitcoin",
             quotes: [
               { symbol: "BTC", price: 123.45 },
               { symbol: "USD", price: 65000.5 },
@@ -93,7 +98,9 @@ describe("CoinMarketCapService", () => {
   it("marks a symbol invalid when CoinMarketCap returns no matching asset", async () => {
     const service = new CoinMarketCapService();
     const client: Client = { get: jest.fn() };
-    client.get.mockResolvedValue({ data: { data: [] } });
+    client.get.mockResolvedValue({
+      data: { status: successfulStatus, data: [] },
+    });
     setClient(service, client);
     jest.spyOn(console, "warn").mockImplementation(() => undefined);
 
@@ -103,7 +110,9 @@ describe("CoinMarketCapService", () => {
   it("throws a not-found error when requesting a missing coin price", async () => {
     const service = new CoinMarketCapService();
     const client: Client = { get: jest.fn() };
-    client.get.mockResolvedValue({ data: { data: [] } });
+    client.get.mockResolvedValue({
+      data: { status: successfulStatus, data: [] },
+    });
     setClient(service, client);
 
     await expect(service.getPrice("UNKNOWN", "Unknown")).rejects.toBeInstanceOf(
@@ -114,7 +123,72 @@ describe("CoinMarketCapService", () => {
   it("treats a malformed CoinMarketCap response as an upstream failure", async () => {
     const service = new CoinMarketCapService();
     const client: Client = { get: jest.fn() };
-    client.get.mockResolvedValue({ data: { data: undefined } });
+    client.get.mockResolvedValue({
+      data: { status: successfulStatus, data: undefined },
+    });
+    setClient(service, client);
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(service.getPrice("BTC", "Bitcoin")).rejects.toBeInstanceOf(
+      CoinMarketCapUpstreamError,
+    );
+  });
+
+  it.each(["65000.5", undefined, Number.NaN, 0, -1])(
+    "rejects an invalid price returned by CoinMarketCap: %p",
+    async (price) => {
+      const service = new CoinMarketCapService();
+      const client: Client = { get: jest.fn() };
+      client.get.mockResolvedValue({
+        data: {
+          status: successfulStatus,
+          data: [
+            {
+              symbol: "BTC",
+              name: "Bitcoin",
+              quotes: [{ symbol: "USD", price }],
+            },
+          ],
+        },
+      });
+      setClient(service, client);
+      jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+      await expect(service.getPrice("BTC", "Bitcoin")).rejects.toBeInstanceOf(
+        CoinMarketCapUpstreamError,
+      );
+    },
+  );
+
+  it("rejects a response for a different asset", async () => {
+    const service = new CoinMarketCapService();
+    const client: Client = { get: jest.fn() };
+    client.get.mockResolvedValue({
+      data: {
+        status: successfulStatus,
+        data: [
+          {
+            symbol: "ETH",
+            name: "Ethereum",
+            quotes: [{ symbol: "USD", price: 3200 }],
+          },
+        ],
+      },
+    });
+    setClient(service, client);
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(service.getPrice("BTC", "Bitcoin")).rejects.toBeInstanceOf(
+      CoinMarketCapUpstreamError,
+    );
+  });
+
+  it("rejects a non-zero CoinMarketCap status error code", async () => {
+    const service = new CoinMarketCapService();
+    const client: Client = { get: jest.fn() };
+    client.get.mockResolvedValue({
+      data: { status: { error_code: 1006 }, data: [] },
+    });
     setClient(service, client);
     jest.spyOn(console, "error").mockImplementation(() => undefined);
 
