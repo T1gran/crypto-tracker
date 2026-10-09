@@ -49,6 +49,52 @@ describe("Coins API (/coins)", () => {
   });
 
   describe("POST /coins", () => {
+    it("rejects unsupported query parameters before fetching or inserting a coin", async () => {
+      const response = await request
+        .post("/coins?unexpected=1")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ symbol: "BTC", name: "Bitcoin" });
+
+      expect(response.status).toBe(400);
+      expect(response.type).toBe("application/json");
+      expect(response.body.message).toContain("does not accept query parameters");
+      expect(mockedCoinMarketCapService.validateSymbol).not.toHaveBeenCalled();
+      expect(CoinRepository.findAll()).toEqual([]);
+    });
+
+    it("rejects malformed JSON without exposing parser details or creating a coin", async () => {
+      const response = await request
+        .post("/coins")
+        .set("Authorization", `Bearer ${validToken}`)
+        .set("Content-Type", "application/json")
+        .send('{"symbol":"BTC",');
+
+      expect(response.status).toBe(400);
+      expect(response.type).toBe("application/json");
+      expect(response.body).toEqual({
+        status: "fail",
+        message: "Invalid JSON format in request body",
+      });
+      expect(mockedCoinMarketCapService.validateSymbol).not.toHaveBeenCalled();
+      expect(CoinRepository.findAll()).toEqual([]);
+    });
+
+    it("returns 413 for an oversized JSON body without fetching or inserting a coin", async () => {
+      const response = await request
+        .post("/coins")
+        .set("Authorization", `Bearer ${validToken}`)
+        .send({ symbol: "BTC", name: "x".repeat(110_000) });
+
+      expect(response.status).toBe(413);
+      expect(response.type).toBe("application/json");
+      expect(response.body).toEqual({
+        status: "fail",
+        message: "Request body is too large",
+      });
+      expect(mockedCoinMarketCapService.validateSymbol).not.toHaveBeenCalled();
+      expect(CoinRepository.findAll()).toEqual([]);
+    });
+
     it("should return 400 if request body is invalid", async () => {
       const response = await request
         .post("/coins")
@@ -162,6 +208,19 @@ describe("Coins API (/coins)", () => {
   });
 
   describe("GET /coins/:symbol", () => {
+    it("returns a safe 400 when Express cannot decode a path parameter", async () => {
+      const response = await request
+        .get("/coins/%E0%A4%A")
+        .set("Authorization", `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.type).toBe("application/json");
+      expect(response.body).toEqual({
+        status: "fail",
+        message: "Invalid URL encoding",
+      });
+    });
+
     it("should return a tracked coin", async () => {
       mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
       await request
