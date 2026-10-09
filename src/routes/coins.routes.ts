@@ -22,7 +22,7 @@ export const coinRouter = express.Router();
 coinRouter.use(authMiddleware);
 
 coinRouter.get("/", validateNoQuery, getCoins);
-coinRouter.post("/", validateMiddleware, createCoin);
+coinRouter.post("/", validateNoQuery, validateMiddleware, createCoin);
 coinRouter.get(
   "/:symbol/price",
   validateSymbolParam,

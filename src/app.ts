@@ -8,12 +8,14 @@ import { openApiSpec } from "./openapi";
 
 export const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 app.get("/api-docs/openapi.json", (_req, res) => res.json(openApiSpec));
 app.use(
   "/api-docs",
   swaggerUi.serve,
-  swaggerUi.setup(openApiSpec, { customSiteTitle: "Crypto Price Tracker API Docs" }),
+  swaggerUi.setup(openApiSpec, {
+    customSiteTitle: "Crypto Price Tracker API Docs",
+  }),
 );
 app.use("/coins", coinRouter);
 app.use(routes);
