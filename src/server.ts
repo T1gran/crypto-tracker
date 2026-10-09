@@ -17,7 +17,15 @@ function startServer() {
       priceSyncService.start();
     });
 
+    let isShuttingDown = false;
+
     const shutdown = async () => {
+      if (isShuttingDown) {
+        return;
+      }
+
+      isShuttingDown = true;
+
       console.log("\nShutting down gracefully...");
 
       const stopPromise = priceSyncService.stop();
