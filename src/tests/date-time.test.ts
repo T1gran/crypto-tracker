@@ -1,4 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { expectSchema } from "./helpers/openapi-contract";
+import { openApiSpec } from "../openapi";
 import { normalizeHistoryRange } from "../utils/date-time";
 import { AppError } from "../errors/app-error";
 
@@ -14,10 +16,12 @@ describe("UTC history date normalization", () => {
     ["2024-02-29T00:00:00Z", "2024-02-29T00:00:00.000Z"],
     ["2000-02-29T00:00:00Z", "2000-02-29T00:00:00.000Z"],
   ])("normalizes %s to %s", (input, expected) => {
+    expectSchema(input, openApiSpec.components.schemas.HistoryBound);
     expect(normalizeHistoryRange(input, input)).toEqual({ from: expected, to: expected });
   });
 
   it("expands a date-only range to a complete UTC day", () => {
+    expectSchema("2026-10-08", openApiSpec.components.schemas.HistoryBound);
     expect(normalizeHistoryRange("2026-10-08", "2026-10-08")).toEqual({
       from: "2026-10-08T00:00:00.000Z",
       to: "2026-10-08T23:59:59.999Z",

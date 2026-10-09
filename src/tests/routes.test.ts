@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import supertest from "supertest";
+import { expectResponse } from "./helpers/openapi-contract";
 import { app } from "../app";
 
 const request = supertest(app);
@@ -9,6 +10,7 @@ describe("Application routes", () => {
     const response = await request.get("/api-docs/");
 
     expect(response.status).toBe(200);
+    expectResponse("/api-docs/", "get", response);
     expect(response.type).toBe("text/html");
     expect(response.text).toContain("Crypto Price Tracker API Docs");
   });
@@ -17,6 +19,7 @@ describe("Application routes", () => {
     const response = await request.get("/api-docs/openapi.json");
 
     expect(response.status).toBe(200);
+    expectResponse("/api-docs/openapi.json", "get", response);
     expect(response.body).toMatchObject({
       openapi: "3.0.3",
       info: { title: "Crypto Price Tracker API" },
@@ -27,6 +30,7 @@ describe("Application routes", () => {
     const response = await request.get("/");
 
     expect(response.status).toBe(200);
+    expectResponse("/", "get", response);
     expect(response.body).toEqual({ status: "ok" });
   });
 
@@ -41,5 +45,6 @@ describe("Application routes", () => {
     const response = await request.get("/?verbose=true");
 
     expect(response.status).toBe(400);
+    expectResponse("/", "get", response);
   });
 });

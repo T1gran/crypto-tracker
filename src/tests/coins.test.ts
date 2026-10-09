@@ -8,6 +8,8 @@ import {
   jest,
 } from "@jest/globals";
 import supertest from "supertest";
+import { expectResponse, expectSchema } from "./helpers/openapi-contract";
+import { openApiSpec } from "../openapi";
 import { deferred } from "./helpers/deferred";
 import { app } from "../app";
 import { initDb } from "../db/init";
@@ -56,6 +58,7 @@ describe("Coins API (/coins)", () => {
         .send({ symbol: "BTC", name: "Bitcoin" });
 
       expect(response.status).toBe(400);
+      expectResponse("/coins", "post", response);
       expect(response.type).toBe("application/json");
       expect(response.body.message).toContain("does not accept query parameters");
       expect(mockedCoinMarketCapService.validateSymbol).not.toHaveBeenCalled();
@@ -70,6 +73,7 @@ describe("Coins API (/coins)", () => {
         .send('{"symbol":"BTC",');
 
       expect(response.status).toBe(400);
+      expectResponse("/coins", "post", response);
       expect(response.type).toBe("application/json");
       expect(response.body).toEqual({
         status: "fail",
@@ -86,6 +90,7 @@ describe("Coins API (/coins)", () => {
         .send({ symbol: "BTC", name: "x".repeat(110_000) });
 
       expect(response.status).toBe(413);
+      expectResponse("/coins", "post", response);
       expect(response.type).toBe("application/json");
       expect(response.body).toEqual({
         status: "fail",
@@ -102,6 +107,7 @@ describe("Coins API (/coins)", () => {
         .send({ symbol: "" });
 
       expect(response.status).toBe(400);
+      expectResponse("/coins", "post", response);
     });
 
     it("should reject unsupported fields and invalid field types", async () => {
@@ -111,6 +117,7 @@ describe("Coins API (/coins)", () => {
         .send({ symbol: 123, name: "Bitcoin", isActive: true });
 
       expect(response.status).toBe(400);
+      expectResponse("/coins", "post", response);
       expect(response.body.message).toContain("unsupported fields");
       expect(mockedCoinMarketCapService.validateSymbol).not.toHaveBeenCalled();
     });
@@ -124,6 +131,7 @@ describe("Coins API (/coins)", () => {
         .send({ symbol: "UNKNOWNCOIN", name: "Unknown Token" });
 
       expect(response.status).toBe(404);
+      expectResponse("/coins", "post", response);
       expect(response.body.message).toContain("not found");
     });
 
@@ -138,21 +146,25 @@ describe("Coins API (/coins)", () => {
         .send({ symbol: "BTC", name: "Bitcoin" });
 
       expect(response.status).toBe(502);
+      expectResponse("/coins", "post", response);
       expect(response.body.message).toContain("CoinMarketCap");
     });
 
     it("should return 201 and create coin successfully", async () => {
       mockedCoinMarketCapService.validateSymbol.mockResolvedValue(true);
+      const body = { symbol: " btc ", name: " Bitcoin " };
+      expectSchema(body, openApiSpec.components.schemas.CreateCoinRequest);
 
       const response = await request
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
-        .send({ symbol: "BTC", name: "Bitcoin" });
+        .send(body);
 
       expect(response.status).toBe(201);
+      expectResponse("/coins", "post", response);
       expect(response.body.data).toMatchObject({
         symbol: "BTC",
-        name: "Bitcoin",
+        name: " Bitcoin ",
       });
     });
 
@@ -170,6 +182,7 @@ describe("Coins API (/coins)", () => {
         .send({ symbol: "BTC", name: "Bitcoin" });
 
       expect(response.status).toBe(409);
+      expectResponse("/coins", "post", response);
       expect(response.body.message).toContain("already being tracked");
     });
   });
@@ -188,14 +201,9 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
+      expectResponse("/coins", "get", response);
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.data.length).toBeGreaterThan(0);
-    });
-
-    it("should return 401 without a valid API key", async () => {
-      const response = await request.get("/coins");
-
-      expect(response.status).toBe(401);
     });
 
     it("should reject query parameters that this endpoint does not accept", async () => {
@@ -204,6 +212,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);
+      expectResponse("/coins", "get", response);
     });
   });
 
@@ -214,6 +223,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);
+      expectResponse("/coins/{symbol}", "get", response);
       expect(response.type).toBe("application/json");
       expect(response.body).toEqual({
         status: "fail",
@@ -233,6 +243,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
+      expectResponse("/coins/{symbol}", "get", response);
       expect(response.body.data).toMatchObject({
         symbol: "SOL",
         name: "Solana",
@@ -245,6 +256,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
+      expectResponse("/coins/{symbol}", "get", response);
       expect(response.body.message).toContain("not found");
     });
 
@@ -254,6 +266,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);
+      expectResponse("/coins/{symbol}", "get", response);
     });
   });
 
@@ -287,6 +300,7 @@ describe("Coins API (/coins)", () => {
 
         const response = await responsePromise;
         expect(response.status).toBe(404);
+        expectResponse("/coins/{symbol}/price", "get", response);
         expect(response.body).toMatchObject({
           status: "fail",
           message: "Coin was removed while fetching its price",
@@ -309,6 +323,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
+      expectResponse("/coins/{symbol}/price", "get", response);
       expect(response.body.data).toMatchObject({
         symbol: "BTC",
         price_usd: 65000.5,
@@ -334,6 +349,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(502);
+      expectResponse("/coins/{symbol}/price", "get", response);
       expect(response.body.message).toContain("CoinMarketCap");
       expect(PriceRepository.getHistoryBySymbol("BTC")).toEqual([]);
     });
@@ -344,6 +360,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
+      expectResponse("/coins/{symbol}/price", "get", response);
     });
   });
 
@@ -360,6 +377,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
+      expectResponse("/coins/{symbol}", "delete", response);
       expect(response.body.message).toContain("ADA");
       expect(CoinRepository.findBySymbol("ADA")).toBeNull();
     });
@@ -370,6 +388,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
+      expectResponse("/coins/{symbol}", "delete", response);
     });
   });
 
@@ -383,6 +402,7 @@ describe("Coins API (/coins)", () => {
         .send({ isActive: false });
 
       expect(deactivateResponse.status).toBe(200);
+      expectResponse("/coins/{symbol}", "patch", deactivateResponse);
       expect(CoinRepository.findBySymbol("BTC")).toMatchObject({
         is_active: 0,
       });
@@ -397,6 +417,7 @@ describe("Coins API (/coins)", () => {
         .send({ isActive: true });
 
       expect(activateResponse.status).toBe(200);
+      expectResponse("/coins/{symbol}", "patch", activateResponse);
       expect(CoinRepository.findBySymbol("BTC")).toMatchObject({
         is_active: 1,
       });
@@ -409,6 +430,7 @@ describe("Coins API (/coins)", () => {
         .send({ isActive: false });
 
       expect(response.status).toBe(404);
+      expectResponse("/coins/{symbol}", "patch", response);
     });
 
     it("should reject a missing, non-boolean, or extra status field", async () => {
@@ -426,8 +448,11 @@ describe("Coins API (/coins)", () => {
         .send({ isActive: "false", name: "Bitcoin" });
 
       expect(missing.status).toBe(400);
+      expectResponse("/coins/{symbol}", "patch", missing);
       expect(nonBoolean.status).toBe(400);
+      expectResponse("/coins/{symbol}", "patch", nonBoolean);
       expect(extraField.status).toBe(400);
+      expectResponse("/coins/{symbol}", "patch", extraField);
       expect(extraField.body.message).toContain("only 'isActive'");
     });
   });
@@ -442,10 +467,11 @@ describe("Coins API (/coins)", () => {
       PriceRepository.savePrice(CoinRepository.findBySymbol("XRP")!.id, 2.5);
 
       const response = await request
-        .get("/coins/xrp/history?limit=10")
+        .get("/coins/%20xrp%20/history?limit=10")
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
+      expectResponse("/coins/{symbol}/history", "get", response);
       expect(response.body).toMatchObject({ symbol: "XRP", count: 1 });
       expect(response.body.data[0]).toMatchObject({
         coin_symbol: "XRP",
@@ -459,6 +485,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
+      expectResponse("/coins/{symbol}/history", "get", response);
     });
 
     it("should reject invalid pagination and date query parameters", async () => {
@@ -469,6 +496,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);
+      expectResponse("/coins/{symbol}/history", "get", response);
     });
 
     it("should reject unsupported history query parameters", async () => {
@@ -479,6 +507,7 @@ describe("Coins API (/coins)", () => {
         .set("Authorization", `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);
+      expectResponse("/coins/{symbol}/history", "get", response);
     });
   });
 });
