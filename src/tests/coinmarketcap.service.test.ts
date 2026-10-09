@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import {
   CoinMarketCapNotFoundError,
   CoinMarketCapUpstreamError,
