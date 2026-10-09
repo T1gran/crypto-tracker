@@ -26,6 +26,13 @@ function startServer() {
 
       isShuttingDown = true;
 
+      const shutdownTimeout = setTimeout(() => {
+        console.error("Shutdown timed out after 10 seconds");
+        process.exit(1);
+      }, 10_000);
+
+      shutdownTimeout.unref();
+
       console.log("\nShutting down gracefully...");
 
       const stopPromise = priceSyncService.stop();
@@ -36,6 +43,8 @@ function startServer() {
           await stopPromise;
           db.close();
           console.log("Database connection closed.");
+          clearTimeout(shutdownTimeout);
+          process.exitCode = 0;
         } catch (err) {
           console.error("Error closing database connection:", err);
         }
