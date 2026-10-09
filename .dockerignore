@@ -1,7 +1,12 @@
 node_modules
 dist
 .git
-.env
+.env*
 db
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
 coverage
 npm-debug.log*
+.DS_Store

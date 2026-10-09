@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "start": "nodemon --exec tsx src/server.ts",
+    "start:prod": "node dist/server.js",
     "debug": "node --import tsx --inspect-brk src/server.ts",
     "test": "jest --runInBand --detectOpenHandles",
-    "seed": "tsx src/db/seed.ts"
+    "seed": "tsx src/db/seed.ts",
+    "seed:prod": "node dist/db/seed.js"
   },
   "keywords": [],
   "author": "",

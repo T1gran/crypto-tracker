@@ -23,6 +23,8 @@ REST API на Node.js, Express и TypeScript для ведения списка 
 - API-ключ CoinMarketCap.
 
 Для контейнерного запуска нужны Docker и Docker Compose.
+В образе используется Node.js 22, production-зависимости и скомпилированный
+код без тестов. Приложение работает от пользователя `node`.
 
 ## Переменные окружения
 
@@ -90,7 +92,7 @@ docker compose build
 Создайте базу и API-ключ в Docker volume:
 
 ```bash
-docker compose run --rm app node dist/db/seed.js
+docker compose run --rm app npm run seed:prod
 ```
 
 Затем запустите приложение:
@@ -98,6 +100,11 @@ docker compose run --rm app node dist/db/seed.js
 ```bash
 docker compose up -d
 ```
+
+В образе настроен healthcheck: запрос к `GET /` каждые 30 секунд.
+Проверить состояние контейнера можно командой `docker compose ps`.
+При остановке Compose даёт приложению 15 секунд на завершение HTTP-запросов,
+фоновой синхронизации и закрытие БД.
 
 Просмотр логов и остановка:
 
@@ -117,6 +124,12 @@ HOST_PORT=8080 docker compose up -d
 ```
 
 В этом случае API будет доступен на `http://localhost:8080`.
+
+После изменения кода пересоберите образ и запустите обновлённый контейнер:
+
+```bash
+docker compose up -d --build
+```
 
 ## Инициализация и миграция БД
 

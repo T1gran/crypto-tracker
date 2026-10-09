@@ -13,6 +13,8 @@ services:
       DB_PATH: /app/db/crypto.db
     volumes:
       - sqlite-data:/app/db
+    init: true
+    stop_grace_period: 15s
     restart: unless-stopped
 
 volumes:
