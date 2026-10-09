@@ -1,12 +1,14 @@
 import { NextFunction, Request, Response } from "express";
+import { AppError } from "../errors/app-error";
 import { normalizeHistoryRange } from "../utils/date-time";
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9]{2,20}$/;
 const MAX_COIN_NAME_LENGTH = 100;
 const HISTORY_QUERY_KEYS = new Set(["limit", "offset", "from", "to"]);
 
-const badRequest = (res: Response, message: string) =>
-  res.status(400).json({ message: `Bad request: ${message}` });
+const badRequest = (message: string): never => {
+  throw new AppError(`Bad request: ${message}`, 400);
+};
 
 export const validateMiddleware = (
   req: Request,
@@ -14,18 +16,17 @@ export const validateMiddleware = (
   next: NextFunction,
 ) => {
   if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
-    return badRequest(res, "request body must be an object");
+    return badRequest("request body must be an object");
   }
 
   const keys = Object.keys(req.body);
   if (keys.some((key) => key !== "symbol" && key !== "name")) {
-    return badRequest(res, "request body contains unsupported fields");
+    return badRequest("request body contains unsupported fields");
   }
 
   const { symbol, name } = req.body;
   if (typeof symbol !== "string" || !SYMBOL_PATTERN.test(symbol.trim())) {
     return badRequest(
-      res,
       "'symbol' is required and must contain 2 to 20 letters or digits",
     );
   }
@@ -36,7 +37,6 @@ export const validateMiddleware = (
     name.trim().length > MAX_COIN_NAME_LENGTH
   ) {
     return badRequest(
-      res,
       "'name' is required and must be a non-empty string of at most 100 characters",
     );
   }
@@ -49,7 +49,7 @@ export const validateSymbolParam = (
   next: NextFunction,
 ) => {
   if (!SYMBOL_PATTERN.test(req.params.symbol.trim())) {
-    return badRequest(res, "'symbol' must contain 2 to 20 letters or digits");
+    return badRequest("'symbol' must contain 2 to 20 letters or digits");
   }
 
   next();
@@ -61,16 +61,16 @@ export const validateStatusUpdate = (
   next: NextFunction,
 ) => {
   if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
-    return badRequest(res, "request body must be an object");
+    return badRequest("request body must be an object");
   }
 
   const keys = Object.keys(req.body);
   if (keys.length !== 1 || keys[0] !== "isActive") {
-    return badRequest(res, "request body must contain only 'isActive'");
+    return badRequest("request body must contain only 'isActive'");
   }
 
   if (typeof req.body.isActive !== "boolean") {
-    return badRequest(res, "'isActive' is required and must be a boolean");
+    return badRequest("'isActive' is required and must be a boolean");
   }
 
   next();
@@ -83,7 +83,7 @@ export const validateHistoryQuery = (
 ) => {
   const queryKeys = Object.keys(req.query);
   if (queryKeys.some((key) => !HISTORY_QUERY_KEYS.has(key))) {
-    return badRequest(res, "query contains unsupported parameters");
+    return badRequest("query contains unsupported parameters");
   }
 
   const { limit, offset, from, to } = req.query;
@@ -99,7 +99,6 @@ export const validateHistoryQuery = (
         Number(offset) > 1_000_000))
   ) {
     return badRequest(
-      res,
       "'limit' must be an integer from 1 to 1000 and 'offset' an integer from 0 to 1000000",
     );
   }
@@ -115,7 +114,7 @@ export const validateNoQuery = (
   next: NextFunction,
 ) => {
   if (Object.keys(req.query).length > 0) {
-    return badRequest(res, "this endpoint does not accept query parameters");
+    return badRequest("this endpoint does not accept query parameters");
   }
 
   next();

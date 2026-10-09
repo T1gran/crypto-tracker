@@ -41,8 +41,6 @@ export const errorMiddleware = (
 
   console.error("[Unhandled Error]:", err);
 
-  const isProduction = process.env.NODE_ENV === "production";
-
   return res.status(500).json({
     status: "error",
     message: "Internal server error",

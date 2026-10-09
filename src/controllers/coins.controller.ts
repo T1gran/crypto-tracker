@@ -22,9 +22,10 @@ export const createCoin = async (
 
     const existingCoin = CoinRepository.findBySymbol(symbol);
     if (existingCoin) {
-      return res.status(409).json({
-        message: `Coin with symbol '${symbol}' is already being tracked`,
-      });
+      throw new AppError(
+        `Coin with symbol '${symbol}' is already being tracked`,
+        409,
+      );
     }
 
     const newCoin = CoinRepository.create(symbol, name);
@@ -170,7 +171,7 @@ export const getCoinHistory = (
     });
 
     return res.status(200).json({
-      symbol: symbol.toUpperCase(),
+      symbol: coin.symbol,
       count: history.length,
       data: history,
     });
