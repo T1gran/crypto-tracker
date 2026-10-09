@@ -21,6 +21,14 @@ export class CoinRepository {
     return coin ?? null;
   }
 
+  static findById(id: number): CoinRow | null {
+    const stmt = db.prepare<[number], CoinRow>(
+      "SELECT * FROM coins WHERE id = ?",
+    );
+    const coin = stmt.get(id);
+    return coin ?? null;
+  }
+
   static findAll() {
     const stmt = db.prepare<[], CoinRow>(
       "SELECT * FROM coins WHERE is_active = 1",
@@ -40,7 +48,11 @@ export class CoinRepository {
     const stmt = db.prepare(
       "UPDATE coins SET is_active = ?, updated_at = ? WHERE symbol = ?",
     );
-    const info = stmt.run(isActive ? 1 : 0, new Date().toISOString(), formattedSymbol);
+    const info = stmt.run(
+      isActive ? 1 : 0,
+      new Date().toISOString(),
+      formattedSymbol,
+    );
     return info.changes > 0;
   }
 }

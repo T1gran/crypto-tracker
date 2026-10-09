@@ -1,21 +1,31 @@
-import { PriceHistoryOptions, PriceHistoryRow } from "../../types/db.types";
+import {
+  CoinRow,
+  PriceHistoryOptions,
+  PriceHistoryRow,
+} from "../../types/db.types";
 import { db } from "../database";
 import { normalizeHistoryRange } from "../../utils/date-time";
+import { fetchedPrice } from "../../types/cmc.types";
+import { CoinRepository } from "./coin.repository";
 
 export class PriceRepository {
-  static savePrice(symbol: string, priceUsd: number) {
-    const formattedSymbol = symbol.toUpperCase().trim();
+  static savePrice(coinId: number, priceUsd: number): CoinRow | null {
     const insertPrice = db.prepare(
-      "INSERT INTO price_history (coin_symbol, price_usd, fetched_at) VALUES (?, ?, ?)",
-    );
-    const updateCoin = db.prepare(
-      "UPDATE coins SET last_synced_at = ?, updated_at = ? WHERE symbol = ?",
+      "INSERT INTO price_history (coin_symbol, price_usd, fetched_at) SELECT symbol, ?, ? FROM coins WHERE id = ?",
     );
 
-    db.transaction(() => {
+    return db.transaction(() => {
       const timestamp = new Date().toISOString();
-      insertPrice.run(formattedSymbol, priceUsd, timestamp);
-      updateCoin.run(timestamp, timestamp, formattedSymbol);
+      const result = insertPrice.run(priceUsd, timestamp, coinId);
+      if (result.changes === 0) {
+        return null;
+      } else {
+        const updateCoin = db.prepare(
+          "UPDATE coins SET last_synced_at = ?, updated_at = ? WHERE id = ?",
+        );
+        updateCoin.run(timestamp, timestamp, coinId);
+        return CoinRepository.findById(coinId);
+      }
     })();
   }
 
@@ -47,23 +57,21 @@ export class PriceRepository {
     return stmt.all(...params);
   }
 
-  static savePricesBatch(
-    items: Array<{ symbol: string; price: number }>,
-  ): void {
+  static savePricesBatch(items: Array<fetchedPrice>): void {
     if (items.length === 0) return;
 
     const stmt = db.prepare(
-      "INSERT INTO price_history (coin_symbol, price_usd, fetched_at) VALUES (?, ?, ?)",
+      "INSERT INTO price_history (coin_symbol, price_usd, fetched_at) SELECT symbol, ?, ? FROM coins WHERE id = ?",
     );
     const updateCoin = db.prepare(
-      "UPDATE coins SET last_synced_at = ?, updated_at = ? WHERE symbol = ?",
+      "UPDATE coins SET last_synced_at = ?, updated_at = ? WHERE id = ?",
     );
 
     const insertMany = db.transaction((data: typeof items) => {
       const timestamp = new Date().toISOString();
       for (const item of data) {
-        stmt.run(item.symbol, item.price, timestamp);
-        updateCoin.run(timestamp, timestamp, item.symbol.toUpperCase().trim());
+        stmt.run(item.price, timestamp, item.coinId);
+        updateCoin.run(timestamp, timestamp, item.coinId);
       }
     });
 

@@ -21,3 +21,8 @@ export interface CmcSimplePriceResponse {
     credit_count: number;
   };
 }
+
+export interface fetchedPrice {
+  coinId: number;
+  price: number;
+}

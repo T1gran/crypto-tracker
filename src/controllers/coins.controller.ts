@@ -82,8 +82,12 @@ export const getCurrentCoinPrice = async (
     }
 
     const price = await coinMarketCapService.getPrice(coin.symbol, coin.name);
-    PriceRepository.savePrice(coin.symbol, price);
-    const updatedCoin = CoinRepository.findBySymbol(coin.symbol)!;
+
+    const updatedCoin = PriceRepository.savePrice(coin.id, price);
+
+    if (!updatedCoin) {
+      throw new AppError("Coin was removed while fetching its price", 404);
+    }
 
     return res.status(200).json({
       data: {

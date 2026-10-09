@@ -47,8 +47,8 @@ describe("UTC storage, API responses and history filters", () => {
       });
       CoinRepository.updateCoinStatus("ETH", false);
       expect(CoinRepository.findBySymbol("ETH")?.updated_at).toBe(expected);
-      PriceRepository.savePrice("BTC", 100);
-      PriceRepository.savePricesBatch([{ symbol: "ETH", price: 10 }]);
+      PriceRepository.savePrice(CoinRepository.findBySymbol("BTC")!.id, 100);
+      PriceRepository.savePricesBatch([{ coinId: CoinRepository.findBySymbol("ETH")!.id, price: 10 }]);
       for (const symbol of ["BTC", "ETH"]) {
         expect(PriceRepository.getHistoryBySymbol(symbol)[0]?.fetched_at).toBe(expected);
         expect(CoinRepository.findBySymbol(symbol)).toMatchObject({
@@ -72,7 +72,7 @@ describe("UTC storage, API responses and history filters", () => {
   });
 
   it("returns UTC ISO date-times for coin and history responses", async () => {
-    PriceRepository.savePrice("BTC", 100);
+    PriceRepository.savePrice(CoinRepository.findBySymbol("BTC")!.id, 100);
     const coinResponse = await request.get("/coins/BTC").set("Authorization", `Bearer ${token}`);
     const listResponse = await request.get("/coins").set("Authorization", `Bearer ${token}`);
     const historyResponse = await history();
@@ -197,8 +197,8 @@ describe("legacy timestamp migration", () => {
     initDb();
     expect(PriceRepository.getHistoryBySymbol("BTC")).toEqual(original);
     CoinRepository.create("ETH", "Ethereum");
-    PriceRepository.savePrice("BTC", 300);
-    PriceRepository.savePricesBatch([{ symbol: "ETH", price: 10 }]);
+    PriceRepository.savePrice(CoinRepository.findBySymbol("BTC")!.id, 300);
+    PriceRepository.savePricesBatch([{ coinId: CoinRepository.findBySymbol("ETH")!.id, price: 10 }]);
     expect(CoinRepository.findBySymbol("ETH")?.created_at).toMatch(UTC_PATTERN);
     expect(PriceRepository.getHistoryBySymbol("BTC")[0]?.fetched_at).toMatch(UTC_PATTERN);
     expect(PriceRepository.getHistoryBySymbol("ETH")[0]?.fetched_at).toMatch(UTC_PATTERN);

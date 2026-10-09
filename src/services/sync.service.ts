@@ -1,5 +1,6 @@
 import { CoinRepository } from "../db/repository/coin.repository";
 import { PriceRepository } from "../db/repository/price.repository";
+import { fetchedPrice } from "../types/cmc.types";
 import { coinMarketCapService } from "./coinmarketcap.service";
 
 type SyncState = "running" | "stopping" | "stopped";
@@ -78,7 +79,7 @@ export class PriceSyncService {
     const coins = CoinRepository.findAll();
     if (coins.length === 0) return;
 
-    const fetchedPrices: Array<{ symbol: string; price: number }> = [];
+    const fetchedPrices: Array<fetchedPrice> = [];
 
     await Promise.allSettled(
       coins.map(async (coin) => {
@@ -87,7 +88,7 @@ export class PriceSyncService {
             coin.symbol,
             coin.name,
           );
-          fetchedPrices.push({ symbol: coin.symbol, price });
+          fetchedPrices.push({ coinId: coin.id, price });
         } catch (error) {
           console.error(
             `[PriceSyncService] Failed to fetch price for '${coin.symbol}':`,

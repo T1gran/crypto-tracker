@@ -8,6 +8,7 @@ import {
   jest,
 } from "@jest/globals";
 import supertest from "supertest";
+import { deferred } from "./helpers/deferred";
 import { app } from "../app";
 import { initDb } from "../db/init";
 import { db } from "../db/database";
@@ -40,7 +41,7 @@ describe("Coins API (/coins)", () => {
   });
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     db.exec(
       "DELETE FROM price_history; DELETE FROM coins; DELETE FROM api_keys;",
     );
@@ -198,6 +199,48 @@ describe("Coins API (/coins)", () => {
   });
 
   describe("GET /coins/:symbol/price", () => {
+    it.each([false, true])(
+      "returns 404 if the original coin is removed during fetching (recreated: %s)",
+      async (recreate) => {
+        const original = CoinRepository.create("BTC", "Bitcoin");
+        const price = deferred<number>();
+        const started = deferred<void>();
+        mockedCoinMarketCapService.getPrice.mockImplementationOnce(() => {
+          started.resolve();
+          return price.promise;
+        });
+
+        const responsePromise = request
+          .get("/coins/BTC/price")
+          .set("Authorization", `Bearer ${validToken}`)
+          .then((response) => response);
+
+        await started.promise;
+        try {
+          CoinRepository.deleteBySymbol("BTC");
+          if (recreate) {
+            const replacement = CoinRepository.create("BTC", "Bitcoin");
+            expect(replacement.id).not.toBe(original.id);
+          }
+        } finally {
+          price.resolve(65000.5);
+        }
+
+        const response = await responsePromise;
+        expect(response.status).toBe(404);
+        expect(response.body).toMatchObject({
+          status: "fail",
+          message: "Coin was removed while fetching its price",
+        });
+        expect(response.body.data).toBeUndefined();
+        expect(PriceRepository.getHistoryBySymbol("BTC")).toEqual([]);
+        expect(CoinRepository.findById(original.id)).toBeNull();
+        if (recreate) {
+          expect(CoinRepository.findBySymbol("BTC")?.last_synced_at).toBeNull();
+        }
+      },
+    );
+
     it("should fetch, persist, and return the current USD price", async () => {
       CoinRepository.create("BTC", "Bitcoin");
       mockedCoinMarketCapService.getPrice.mockResolvedValue(65000.5);
@@ -337,7 +380,7 @@ describe("Coins API (/coins)", () => {
         .post("/coins")
         .set("Authorization", `Bearer ${validToken}`)
         .send({ symbol: "XRP", name: "XRP" });
-      PriceRepository.savePrice("XRP", 2.5);
+      PriceRepository.savePrice(CoinRepository.findBySymbol("XRP")!.id, 2.5);
 
       const response = await request
         .get("/coins/xrp/history?limit=10")

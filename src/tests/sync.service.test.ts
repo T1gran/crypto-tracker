@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { deferred } from "./helpers/deferred";
 import { initDb } from "../db/init";
 import { db } from "../db/database";
 import { CoinRepository } from "../db/repository/coin.repository";
@@ -25,7 +26,7 @@ describe("PriceSyncService", () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     db.exec("DELETE FROM price_history; DELETE FROM coins;");
   });
 
@@ -74,6 +75,47 @@ describe("PriceSyncService", () => {
       failure,
     );
   });
+
+  it.each([false, true])(
+    "keeps other prices when a coin is removed during fetching (recreated: %s)",
+    async (recreate) => {
+      const original = CoinRepository.create("BTC", "Bitcoin");
+      const eth = CoinRepository.create("ETH", "Ethereum");
+      const btcPrice = deferred<number>();
+      const ethPrice = deferred<number>();
+      mockedCoinMarketCapService.getPrice.mockImplementation((symbol) => {
+        if (symbol === "BTC") return btcPrice.promise;
+        if (symbol === "ETH") return ethPrice.promise;
+        throw new Error(`Unexpected symbol: ${symbol}`);
+      });
+
+      const sync = runSync(new PriceSyncService());
+      try {
+        expect(mockedCoinMarketCapService.getPrice).toHaveBeenCalledTimes(2);
+        CoinRepository.deleteBySymbol("BTC");
+        if (recreate) {
+          const replacement = CoinRepository.create("BTC", "Bitcoin");
+          expect(replacement.id).not.toBe(original.id);
+        }
+      } finally {
+        btcPrice.resolve(65000.5);
+        ethPrice.resolve(3200.25);
+        await sync;
+      }
+
+      expect(PriceRepository.getHistoryBySymbol("BTC")).toEqual([]);
+      expect(PriceRepository.getHistoryBySymbol("ETH")).toEqual([
+        expect.objectContaining({ coin_symbol: "ETH", price_usd: 3200.25 }),
+      ]);
+      expect(CoinRepository.findById(eth.id)?.last_synced_at).toBe(
+        PriceRepository.getHistoryBySymbol("ETH")[0].fetched_at,
+      );
+      expect(CoinRepository.findById(original.id)).toBeNull();
+      if (recreate) {
+        expect(CoinRepository.findBySymbol("BTC")?.last_synced_at).toBeNull();
+      }
+    },
+  );
 
   it("starts immediately, schedules the next tick, and stops polling", async () => {
     jest.useFakeTimers();
