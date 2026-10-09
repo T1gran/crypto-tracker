@@ -37,9 +37,10 @@ function startServer() {
 
       const stopPromise = priceSyncService.stop();
 
-      server.close(async () => {
+      server.close(async (error) => {
         console.log("HTTP server closed.");
         try {
+          if (error) throw error;
           await stopPromise;
           db.close();
           console.log("Database connection closed.");
@@ -47,8 +48,8 @@ function startServer() {
           process.exitCode = 0;
         } catch (err) {
           console.error("Error closing database connection:", err);
+          process.exitCode = 1;
         }
-        process.exit(0);
       });
     };
 
