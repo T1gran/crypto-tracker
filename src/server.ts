@@ -17,14 +17,15 @@ function startServer() {
       priceSyncService.start();
     });
 
-    const shutdown = () => {
+    const shutdown = async () => {
       console.log("\nShutting down gracefully...");
 
-      priceSyncService.stop();
+      const stopPromise = priceSyncService.stop();
 
-      server.close(() => {
+      server.close(async () => {
         console.log("HTTP server closed.");
         try {
+          await stopPromise;
           db.close();
           console.log("Database connection closed.");
         } catch (err) {
